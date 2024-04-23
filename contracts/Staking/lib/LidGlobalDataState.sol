@@ -8,17 +8,56 @@ import {IChars} from "../../interfaces/IChars.sol";
 import {IBoosters} from "../../interfaces/IBooster.sol";
 import {IRaidHandler} from "../../interfaces/IRaidHandler.sol";
 
-
 error InitializationFunctionReverted(address _initializationContractAddress, bytes _calldata);
 
 library LibGlobalVarState {
+    error ZeroAddress();
+    error InvalidData();
+    error NotOwnerOfAsset();
+    error FarmerStakedAlready();
+    error NoStakeFound();
+    error MaxBoostReached();
+    error InsufficientStake();
+    error InsufficientRaidFees();
+    error InsufficientFees();
+    error NotANarc();
+    error InvalidForeignChainID();
+    error UnexpectedResultLength();
+    error UnexpectedResultMismatch();
+
+    event crossChainStakeFailed(bytes32 indexed messageId, bytes reason);
+    event recoveredFailedStake(bytes32 indexed messageId);
+    event Staked(
+        address indexed owner,
+        uint256 tokenId,
+        uint256 budsAmount,
+        uint256 timeStamp,
+        uint256 localStakedBudsCount,
+        uint256 latestAPR
+    );
+    event UnStaked(
+        address owner,
+        uint256 tokenId,
+        uint256 budsAmount,
+        uint256 timeStamp,
+        uint256 localStakedBudsCount,
+        uint256 latestAPR
+    );
+    event RewardsCalculated(uint256 timeStamp, uint256 rewardsDisbursed);
+    event Raided(
+        address indexed raider,
+        bool isSuccess,
+        bool isBoosted,
+        uint256 rewardTaken,
+        uint256 boostsUsedInLastSevenDays
+    );
+
     bytes32 constant GLOBAL_INT_STORAGE_POSITION = keccak256("diamond.standard.global.integer.storage");
     bytes32 constant GLOBAL_ADDRESS_STORAGE_POSITION = keccak256("diamond.standard.global.address.storage");
     bytes32 constant GLOBAL_BYTES_STORAGE_POSITION = keccak256("diamond.standard.global.bytes.storage");
     bytes32 constant GLOBAL_INTERFACES_STORAGE_POSITION = keccak256("diamond.standard.global.interface.storage");
     bytes32 constant GLOBAL_ARR_STORAGE_POSITION = keccak256("diamond.standard.global.arr.storage");
     bytes32 constant GLOBAL_MAP_STORAGE_POSITION = keccak256("diamond.standard.global.map.storage");
-
 
     struct Stake {
         address owner;
@@ -118,6 +157,26 @@ library LibGlobalVarState {
         assembly {
             ds.slot := position
         }
+    }
+
+    function getCurrentApr() internal view returns (uint256) {
+        if (intStore().localStakedBudsCount == 0) return intStore().baseAPR;
+
+        uint256 localStakedBuds = intStore().localStakedBudsCount * 1 ether;
+        uint256 globalStakedBuds = intStore().globalStakedBudsCount * 1 ether;
+
+        uint256 globalStakedAVG = globalStakedBuds /intStore().noOfChains;
+        uint256 adjustmentFactor;
+        uint256 calculatedAPR;
+
+        localStakedBuds = localStakedBuds / 100;
+        adjustmentFactor = uint256(globalStakedAVG / localStakedBuds);
+        calculatedAPR = (intStore().baseAPR * adjustmentFactor) / 100;
+
+        if (calculatedAPR < 10) return 10 * 100;
+        if (calculatedAPR > 200) return 200 * 100;
+
+        return uint256(calculatedAPR) * 100;
     }
 
 }
