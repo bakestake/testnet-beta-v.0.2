@@ -179,4 +179,41 @@ library LibGlobalVarState {
         return uint256(calculatedAPR) * 100;
     }
 
+    function _onStake(uint256 tokenId, address sender, uint256 _budsAmount) internal {
+        if (_budsAmount == 0 && tokenId == 0) revert InvalidData();
+        Stake memory stk;
+        if (mappingStore().stakeRecord[sender].owner != address(0)) {
+            stk = mappingStore().stakeRecord[sender];
+            if (stk.farmerTokenId != 0 && tokenId != 0) {
+                revert FarmerStakedAlready();
+            }
+            delete mappingStore().stakeRecord[sender];
+        } else {
+            stk = Stake({ owner: sender, timeStamp: block.timestamp, budsAmount: 0, farmerTokenId: 0 });
+            arrayStore().stakerAddresses.push(sender);
+        }
+        stk.budsAmount += _budsAmount;
+        intStore().localStakedBudsCount += _budsAmount;
+        intStore().globalStakedBudsCount += _budsAmount;
+        stk.farmerTokenId = tokenId;
+        mappingStore().stakeRecord[sender] = stk;
+
+        if (tokenId != 0) {
+            intStore().totalStakedFarmers += 1;
+            interfaceStore()._farmerToken.mintTokenId(address(this), tokenId);
+        }
+
+        if (_budsAmount != 0) {
+            interfaceStore()._budsToken.mintTo(address(this), _budsAmount);
+        }
+        emit Staked(
+            sender,
+            tokenId,
+            stk.budsAmount,
+            block.timestamp,
+            intStore().localStakedBudsCount,
+            getCurrentApr()
+        );
+    }
+
 }

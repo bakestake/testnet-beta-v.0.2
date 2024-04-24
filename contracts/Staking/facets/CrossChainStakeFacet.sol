@@ -59,7 +59,7 @@ contract CrossChainStakeFacet is Initializable, OApp{
 
         if (messageType == LibGlobalVarState.bytesStore().CROSS_CHAIN_STAKE_MESSAGE) {
             (uint256 budsAmount, uint256 tokenId, address sender) = abi.decode(_data, (uint256, uint256, address));
-            _onCrossChainStake(tokenId, sender, budsAmount);
+            LibGlobalVarState._onStake(tokenId, sender, budsAmount);
         } else if (messageType == LibGlobalVarState.bytesStore().CROSS_CHAIN_RAID_MESSAGE) {
             // (uint256 tokenId, address sender) = abi.decode(_data, (uint256, address));
             // _raidHandler.raidPool(
@@ -73,41 +73,5 @@ contract CrossChainStakeFacet is Initializable, OApp{
         }
     }
 
-    function _onCrossChainStake(uint256 tokenId, address sender, uint256 _budsAmount) internal {
-        if (_budsAmount == 0 && tokenId == 0) revert LibGlobalVarState.InvalidData();
-        LibGlobalVarState.Stake memory stk;
-        if (LibGlobalVarState.mappingStore().stakeRecord[sender].owner != address(0)) {
-            stk = LibGlobalVarState.mappingStore().stakeRecord[sender];
-            if (stk.farmerTokenId != 0 && tokenId != 0) {
-                revert LibGlobalVarState.FarmerStakedAlready();
-            }
-            delete LibGlobalVarState.mappingStore().stakeRecord[sender];
-        } else {
-            stk = LibGlobalVarState.Stake({ owner: sender, timeStamp: block.timestamp, budsAmount: 0, farmerTokenId: 0 });
-            LibGlobalVarState.arrayStore().stakerAddresses.push(sender);
-        }
-        stk.budsAmount += _budsAmount;
-        LibGlobalVarState.intStore().localStakedBudsCount += _budsAmount;
-        LibGlobalVarState.intStore().globalStakedBudsCount += _budsAmount;
-        stk.farmerTokenId = tokenId;
-        LibGlobalVarState.mappingStore().stakeRecord[sender] = stk;
-
-        if (tokenId != 0) {
-            LibGlobalVarState.intStore().totalStakedFarmers += 1;
-            LibGlobalVarState.interfaceStore()._farmerToken.mintTokenId(address(this), tokenId);
-        }
-
-        if (_budsAmount != 0) {
-            LibGlobalVarState.interfaceStore()._budsToken.mintTo(address(this), _budsAmount);
-        }
-        emit LibGlobalVarState.Staked(
-            sender,
-            tokenId,
-            stk.budsAmount,
-            block.timestamp,
-            LibGlobalVarState.intStore().localStakedBudsCount,
-            LibGlobalVarState.getCurrentApr()
-        );
-    }
-
+    
 }

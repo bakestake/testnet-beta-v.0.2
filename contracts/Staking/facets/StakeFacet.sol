@@ -31,44 +31,8 @@ contract StakeFacet is Initializable, IERC721Receiver {
     }
 
     function addStake(uint256 _budsAmount, uint256 _farmerTokenId) public {
-        if (_budsAmount == 0 && _farmerTokenId == 0) revert LibGlobalVarState.InvalidData();
         if (_farmerTokenId != 0 && LibGlobalVarState.interfaceStore()._farmerToken.ownerOf(_farmerTokenId) != msg.sender) revert LibGlobalVarState.NotOwnerOfAsset();
-
-        LibGlobalVarState.Stake memory stk;
-
-        if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender].owner != address(0)) {
-            stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
-            if (stk.farmerTokenId != 0 && _farmerTokenId != 0) {
-                revert LibGlobalVarState.FarmerStakedAlready();
-            }
-            delete LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
-        } else {
-            stk = LibGlobalVarState.Stake({ owner: msg.sender, timeStamp: block.timestamp, budsAmount: 0, farmerTokenId: 0 });
-            LibGlobalVarState.arrayStore().stakerAddresses.push(msg.sender);
-        }
-
-        stk.budsAmount += _budsAmount;
-        LibGlobalVarState.intStore().localStakedBudsCount += _budsAmount;
-        LibGlobalVarState.intStore().globalStakedBudsCount += _budsAmount;
-        stk.farmerTokenId = _farmerTokenId;
-        LibGlobalVarState.mappingStore().stakeRecord[msg.sender] = stk;
-
-        if (_farmerTokenId != 0) {
-            LibGlobalVarState.intStore().totalStakedFarmers += 1;
-            LibGlobalVarState.interfaceStore()._farmerToken.safeTransferFrom(msg.sender, address(this), _farmerTokenId);
-        }
-
-        if (_budsAmount != 0) {
-            LibGlobalVarState.interfaceStore()._budsToken.transferFrom(msg.sender, address(this), _budsAmount);
-        }
-        emit LibGlobalVarState.Staked(
-            msg.sender,
-            _farmerTokenId,
-            _budsAmount,
-            block.timestamp,
-            LibGlobalVarState.intStore().localStakedBudsCount,
-            LibGlobalVarState.getCurrentApr()
-        );
+        LibGlobalVarState._onStake(_farmerTokenId, msg.sender, _budsAmount);
     }
 
     function boostStake(uint256 tokenId) external {
