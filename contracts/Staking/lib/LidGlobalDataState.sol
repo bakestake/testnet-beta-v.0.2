@@ -7,6 +7,7 @@ import {IBudsToken} from "../../interfaces/IBudsToken.sol";
 import {IChars} from "../../interfaces/IChars.sol";
 import {IBoosters} from "../../interfaces/IBooster.sol";
 import {IRaidHandler} from "../../interfaces/IRaidHandler.sol";
+import { ISupraRouter } from "../../interfaces/ISupraRouter.sol";
 
 error InitializationFunctionReverted(address _initializationContractAddress, bytes _calldata);
 
@@ -74,6 +75,15 @@ library LibGlobalVarState {
         uint256 blockTime;
     }
 
+    struct Raid {
+        address raider;
+        bool isBoosted;
+        uint256 stakers;
+        uint256 local;
+        uint256 global;
+        uint256 noOfChains;
+    }
+
     struct Interfaces {
         IBudsToken _budsToken;
         IChars _farmerToken;
@@ -81,6 +91,7 @@ library LibGlobalVarState {
         IBoosters _stonerToken;
         IBoosters _informantToken;
         IRaidHandler _raidHandler;
+        ISupraRouter _supraRouter;
     }
 
     struct Integers {
@@ -102,12 +113,14 @@ library LibGlobalVarState {
     struct ByteStore {
         bytes32 CROSS_CHAIN_RAID_MESSAGE;
         bytes32 CROSS_CHAIN_STAKE_MESSAGE;
+        bytes32 keyHash;
         bytes4 GetLocalStakedBuds;
     }
 
     struct Arrays {
         address[] stakerAddresses;
         uint16[] foreignChainIDs;
+        Raid[] raiderQueue;
     }
 
     struct Mappings {
@@ -115,6 +128,7 @@ library LibGlobalVarState {
         mapping(address => uint256[]) boosts;
         mapping(address => uint256) rewards;
         mapping(uint16 => ChainEntry) wormholePeers;
+        mapping(address => uint256[]) lastRaidBoost;
     }
 
     function intStore() internal pure returns (Integers storage ds) {
@@ -177,6 +191,13 @@ library LibGlobalVarState {
         if (calculatedAPR > 200) return 200 * 100;
 
         return uint256(calculatedAPR) * 100;
+    }
+
+    function distributeRaidingRewards(address to, uint256 rewardAmount) internal returns (uint256 rewardPayout) {
+        interfaceStore()._budsToken.burnFrom(address(this), rewardAmount / 100);
+        rewardPayout = rewardAmount - (rewardAmount / 100);
+        interfaceStore()._budsToken.transfer(to, rewardPayout);
+        return rewardPayout;
     }
 
     function _onStake(uint256 tokenId, address sender, uint256 _budsAmount) internal {

@@ -12,7 +12,7 @@ import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 import "../lib/LidGlobalDataState.sol";
 
-contract CrossChainStakeFacet is Initializable, OApp{
+contract CrossChainFacet is Initializable, OApp{
 
     function __crosschainstakefacet_init__(address lzEndpoint) public initializer{
         __OApp_Init(lzEndpoint, msg.sender);
@@ -48,6 +48,27 @@ contract CrossChainStakeFacet is Initializable, OApp{
         receipt = _lzSend(destChainId, payload, options, MessagingFee(msg.value, 0), payable(msg.sender));
     }
 
+    function crossChainRaid(
+        uint32 destChainId,
+        uint256 tokenId
+    ) external payable returns (MessagingReceipt memory receipt) {
+        if (LibGlobalVarState.interfaceStore()._narcToken.balanceOf(msg.sender) == 0) revert LibGlobalVarState.NotANarc();
+        if (tokenId != 0) {
+            if (LibGlobalVarState.interfaceStore()._informantToken.ownerOf(tokenId) != msg.sender) revert LibGlobalVarState.NotOwnerOfAsset();
+            LibGlobalVarState.interfaceStore()._informantToken.burn(tokenId);
+        }
+
+        bytes memory payload = abi.encode(LibGlobalVarState.bytesStore().CROSS_CHAIN_RAID_MESSAGE, abi.encode(tokenId, msg.sender));
+        bytes memory options = OptionsBuilder.addExecutorLzReceiveOption(OptionsBuilder.newOptions(), 2_000_000, 0);
+        MessagingFee memory ccmFees = _quote(destChainId, payload, options, false);
+
+        if (msg.value - LibGlobalVarState.intStore().raidFees < ccmFees.nativeFee) revert LibGlobalVarState.InsufficientRaidFees();
+
+        LibGlobalVarState.addressStore().treasuryWallet.transfer(msg.value - ccmFees.nativeFee);
+
+        receipt = _lzSend(destChainId, payload, options, MessagingFee(ccmFees.nativeFee, 0), payable(msg.sender));
+    }
+
     function _lzReceive(
         Origin calldata /*_origin*/,
         bytes32 /*_guid*/,
@@ -61,15 +82,15 @@ contract CrossChainStakeFacet is Initializable, OApp{
             (uint256 budsAmount, uint256 tokenId, address sender) = abi.decode(_data, (uint256, uint256, address));
             LibGlobalVarState._onStake(tokenId, sender, budsAmount);
         } else if (messageType == LibGlobalVarState.bytesStore().CROSS_CHAIN_RAID_MESSAGE) {
-            // (uint256 tokenId, address sender) = abi.decode(_data, (uint256, address));
-            // _raidHandler.raidPool(
-            //     tokenId,
-            //     sender,
-            //     stakerAddresses.length,
-            //     localStakedBudsCount,
-            //     globalStakedBudsCount,
-            //     noOfChains
-            // );
+            (uint256 tokenId, address sender) = abi.decode(_data, (uint256, address));
+            LibGlobalVarState.interfaceStore()._raidHandler.raidPool(
+                tokenId,
+                sender,
+                LibGlobalVarState.arrayStore().stakerAddresses.length,
+                LibGlobalVarState.intStore().localStakedBudsCount,
+                LibGlobalVarState.intStore().globalStakedBudsCount,
+                LibGlobalVarState.intStore().noOfChains
+            );
         }
     }
 

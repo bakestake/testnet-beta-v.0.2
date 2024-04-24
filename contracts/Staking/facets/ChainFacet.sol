@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 
 import "../lib/LidGlobalDataState.sol";
 
-contract StakeFacet is Initializable, IERC721Receiver {
+contract ChainFacet is Initializable, IERC721Receiver {
     
     function __stakefacet_init__(address[5] memory _tokenAddresses) public initializer{
         if (
@@ -129,6 +129,24 @@ contract StakeFacet is Initializable, IERC721Receiver {
             block.timestamp,
             LibGlobalVarState.intStore().localStakedBudsCount,
             LibGlobalVarState.getCurrentApr()
+        );
+    }
+
+    function raid(uint256 tokenId) public payable {
+        if (LibGlobalVarState.interfaceStore()._narcToken.balanceOf(msg.sender) == 0) revert LibGlobalVarState.NotANarc();
+        if (msg.value < LibGlobalVarState.intStore().raidFees) revert LibGlobalVarState.InsufficientRaidFees();
+        LibGlobalVarState.addressStore().treasuryWallet.transfer(msg.value);
+        if (tokenId != 0) {
+            require(LibGlobalVarState.interfaceStore()._informantToken.ownerOf(tokenId) == msg.sender);
+            LibGlobalVarState.interfaceStore()._informantToken.burn(tokenId);
+        }
+        LibGlobalVarState.interfaceStore()._raidHandler.raidPool(
+            tokenId,
+            msg.sender,
+            LibGlobalVarState.arrayStore().stakerAddresses.length,
+            LibGlobalVarState.intStore().localStakedBudsCount,
+            LibGlobalVarState.intStore().globalStakedBudsCount,
+            LibGlobalVarState.intStore().noOfChains
         );
     }
 
