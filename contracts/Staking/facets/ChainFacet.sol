@@ -1,6 +1,3 @@
-/// Should consist all same chain functions
-/// stake unstake
-
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 

@@ -5,20 +5,6 @@ import { ISupraRouter } from "../../interfaces/ISupraRouter.sol";
 import "@chainlink/contracts/src/v0.8/shared/access/ConfirmedOwner.sol";
 
 interface IStaking {
-    function getNumberOfStakers() external view returns (uint256);
-    function getNoOfChains() external view returns (uint256);
-    function getGlobalStakedBuds() external view returns (uint256);
-    function getlocalStakedBuds() external view returns (uint256);
-    function getCurrentApr(uint256 localStakedBuds, uint256 globalStakedBuds) external view returns (uint256);
-    function getBaseAPR() external view returns (uint256);
-    function getCurrentRewardForAddress(address _address) external view returns (uint256);
-    function getNextRewardTime() external view returns (uint256);
-    function getChainLinkOracle() external view returns (address);
-    function getChainLinkToken() external view returns (address);
-    function getNewJobIdForOracle() external view returns (bytes32);
-    function getZetaTokenAddress() external view returns (address);
-    function getZetaConsunerAddress() external view returns (address);
-    function getCurrentStakeForAddress(address _address) external view returns (uint256[2] memory stake);
     function finalizeRaid(address raider, bool isSuccess, bool isboosted, uint256 boosts) external;
 }
 

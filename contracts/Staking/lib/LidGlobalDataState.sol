@@ -9,8 +9,6 @@ import {IBoosters} from "../../interfaces/IBooster.sol";
 import {IRaidHandler} from "../../interfaces/IRaidHandler.sol";
 import { ISupraRouter } from "../../interfaces/ISupraRouter.sol";
 
-error InitializationFunctionReverted(address _initializationContractAddress, bytes _calldata);
-
 library LibGlobalVarState {
     error ZeroAddress();
     error InvalidData();
