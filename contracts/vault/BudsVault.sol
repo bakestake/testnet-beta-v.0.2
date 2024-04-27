@@ -28,6 +28,12 @@ contract BudsVault is Initializable, UUPSUpgradeable, OwnableUpgradeable {
         }
     }
 
+    function removeContracts(address[] memory contractAddresses) public onlyOwner {
+        for (uint256 i = 0; i < contractAddresses.length; i++) {
+            whitelist[contractAddresses[i]] = false;
+        }
+    }
+
     function sendBudsTo(address to, uint256 amount) public onlyWhitelisted {
         _budsToken.transfer(to, amount);
     }

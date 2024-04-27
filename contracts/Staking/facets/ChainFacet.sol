@@ -8,7 +8,7 @@ import "../lib/LidGlobalDataState.sol";
 
 contract ChainFacet is Initializable, IERC721Receiver {
     
-    function __stakefacet_init__(address[5] memory _tokenAddresses) public initializer{
+    function __stakefacet_init__(address[5] memory _tokenAddresses, address budsVault) public initializer{
         if (
             _tokenAddresses[0] == address(0) ||
             _tokenAddresses[1] == address(0) ||
@@ -22,6 +22,7 @@ contract ChainFacet is Initializable, IERC721Receiver {
         LibGlobalVarState.interfaceStore()._narcToken = IChars(_tokenAddresses[2]);
         LibGlobalVarState.interfaceStore()._stonerToken = IBoosters(_tokenAddresses[3]);
         LibGlobalVarState.interfaceStore()._informantToken = IBoosters(_tokenAddresses[4]);
+        LibGlobalVarState.interfaceStore()._budsVault = IBudsVault(budsVault);
 
         LibGlobalVarState.intStore().baseAPR = 50;
         LibGlobalVarState.intStore().noOfChains = 5;
@@ -71,7 +72,7 @@ contract ChainFacet is Initializable, IERC721Receiver {
         LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
         stk.timeStamp = block.timestamp;
         uint256 rewards = LibGlobalVarState.calculateStakingReward(stk.budsAmount, stk.timeStamp, stk.buyApr);
-        LibGlobalVarState.interfaceStore()._budsToken.transfer(msg.sender, rewards);
+        LibGlobalVarState.interfaceStore()._budsVault.sendBudsTo(msg.sender, rewards);
     }
 
     function unStakeBuds(uint256 _budsAmount) public {

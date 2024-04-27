@@ -8,6 +8,7 @@ import {IChars} from "../../interfaces/IChars.sol";
 import {IBoosters} from "../../interfaces/IBooster.sol";
 import {IRaidHandler} from "../../interfaces/IRaidHandler.sol";
 import { ISupraRouter } from "../../interfaces/ISupraRouter.sol";
+import {IBudsVault} from "../../interfaces/IBudsVault.sol";
 
 library LibGlobalVarState {
     error ZeroAddress();
@@ -91,6 +92,7 @@ library LibGlobalVarState {
         IBoosters _informantToken;
         IRaidHandler _raidHandler;
         ISupraRouter _supraRouter;
+        IBudsVault _budsVault;
     }
 
     struct Integers {
