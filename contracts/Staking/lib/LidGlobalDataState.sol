@@ -60,6 +60,7 @@ library LibGlobalVarState {
 
     struct Stake {
         address owner;
+        uint256 buyApr;
         uint256 timeStamp;
         uint256 budsAmount;
         uint256 farmerTokenId;
@@ -206,9 +207,10 @@ library LibGlobalVarState {
             if (stk.farmerTokenId != 0 && tokenId != 0) {
                 revert FarmerStakedAlready();
             }
+            stk.buyApr = stk.buyApr + getCurrentApr()/2;
             delete mappingStore().stakeRecord[sender];
         } else {
-            stk = Stake({ owner: sender, timeStamp: block.timestamp, budsAmount: 0, farmerTokenId: 0 });
+            stk = Stake({ owner: sender, timeStamp: block.timestamp, buyApr: getCurrentApr(), budsAmount: 0, farmerTokenId: 0 });
             arrayStore().stakerAddresses.push(sender);
         }
         stk.budsAmount += _budsAmount;
@@ -233,6 +235,31 @@ library LibGlobalVarState {
             intStore().localStakedBudsCount,
             getCurrentApr()
         );
+    }
+
+    function getEffectiveAPR(uint256 buyApr) internal view returns(uint256 effectiveApr){
+        if(buyApr > LibGlobalVarState.getCurrentApr()){
+            effectiveApr = (buyApr - LibGlobalVarState.getCurrentApr())/2;
+        }else if(buyApr < LibGlobalVarState.getCurrentApr()){
+            effectiveApr = (LibGlobalVarState.getCurrentApr() - buyApr)/2;
+        }else{
+            effectiveApr = buyApr;
+        }
+    }
+
+    function calculateStakingReward(uint256 budsAmount, uint256 timestamp, uint256 buyApr) internal view returns(uint256 rewards){
+        uint256 timeStaked = block.timestamp - timestamp;
+        if(timeStaked < 1 days) revert ("Minimum staking period is 1 day");
+        // apr have 2 decimal extra so we divide by 10000
+        // this is annual 
+        rewards = budsAmount * getEffectiveAPR(buyApr)/10000;
+
+        //now this is for staked period
+        //reward/365 is reward per day
+        //timestaked/1 days is number of days staked
+        rewards = (rewards/365) * (timeStaked/1 days);
+
+
     }
 
 }

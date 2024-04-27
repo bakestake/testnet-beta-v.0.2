@@ -66,27 +66,26 @@ contract ChainFacet is Initializable, IERC721Receiver {
         }
     }
 
+    function claimRewards() public {
+        if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender].budsAmount == 0) revert LibGlobalVarState.InsufficientStake();
+        LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
+        stk.timeStamp = block.timestamp;
+        uint256 rewards = LibGlobalVarState.calculateStakingReward(stk.budsAmount, stk.timeStamp, stk.buyApr);
+        LibGlobalVarState.interfaceStore()._budsToken.transfer(msg.sender, rewards);
+    }
+
     function unStakeBuds(uint256 _budsAmount) public {
         if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender].budsAmount < _budsAmount) revert LibGlobalVarState.InsufficientStake();
         LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
         stk.budsAmount -= _budsAmount;
-
+    
         if (stk.budsAmount == 0 && stk.farmerTokenId == 0) {
-            for (uint256 i = 0; i < LibGlobalVarState.arrayStore().stakerAddresses.length; i++) {
-                if (msg.sender == LibGlobalVarState.arrayStore().stakerAddresses[i]) {
-                    LibGlobalVarState.arrayStore().stakerAddresses[i] = LibGlobalVarState.arrayStore().stakerAddresses[LibGlobalVarState.arrayStore().stakerAddresses.length - 1];
-                    LibGlobalVarState.arrayStore().stakerAddresses.pop();
-                    break;
-                }
-            }
             delete LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
         }
 
         LibGlobalVarState.intStore().localStakedBudsCount -= _budsAmount;
         LibGlobalVarState.intStore().globalStakedBudsCount -= _budsAmount;
-        uint256 payOut = _budsAmount + LibGlobalVarState.mappingStore().rewards[msg.sender];
-        LibGlobalVarState.mappingStore().rewards[msg.sender] = 0;
-        LibGlobalVarState.interfaceStore()._budsToken.transfer(msg.sender, payOut);
+        LibGlobalVarState.interfaceStore()._budsToken.transfer(msg.sender, _budsAmount);
 
         emit LibGlobalVarState.UnStaked(
             msg.sender,
@@ -107,13 +106,6 @@ contract ChainFacet is Initializable, IERC721Receiver {
         LibGlobalVarState.intStore().totalStakedFarmers -= 1;
 
         if (stk.farmerTokenId == 0 && stk.budsAmount == 0) {
-            for (uint256 i = 0; i < LibGlobalVarState.arrayStore().stakerAddresses.length; i++) {
-                if (LibGlobalVarState.arrayStore().stakerAddresses[i] == msg.sender) {
-                    LibGlobalVarState.arrayStore().stakerAddresses[i] = LibGlobalVarState.arrayStore().stakerAddresses[LibGlobalVarState.arrayStore().stakerAddresses.length - 1];
-                    LibGlobalVarState.arrayStore().stakerAddresses.pop();
-                    break;
-                }
-            }
             delete LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
         }
 
