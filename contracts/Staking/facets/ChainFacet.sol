@@ -33,9 +33,9 @@ contract ChainFacet is Initializable, IERC721Receiver {
         LibGlobalVarState._onStake(_farmerTokenId, msg.sender, _budsAmount);
     }
 
-    function boostStake(uint256 tokenId) external {
+    function boostStake(uint256 tokenId, uint256 stakeIndex) external {
         if (LibGlobalVarState.interfaceStore()._stonerToken.ownerOf(tokenId) != msg.sender) revert LibGlobalVarState.NotOwnerOfAsset();
-        LibGlobalVarState.Stake memory stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
+        LibGlobalVarState.Stake memory stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex];
         if (stk.owner == address(0)) revert LibGlobalVarState.NoStakeFound();
 
         ///max len of this will be 4
@@ -60,28 +60,30 @@ contract ChainFacet is Initializable, IERC721Receiver {
                         : (stk.budsAmount / 100);
 
             stk.budsAmount += amountBoosted;
-            LibGlobalVarState.mappingStore().stakeRecord[msg.sender] = stk;
+            LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex] = stk;
             LibGlobalVarState.interfaceStore()._stonerToken.burn(tokenId);
         } else {
             revert LibGlobalVarState.MaxBoostReached();
         }
     }
 
-    function claimRewards() public {
-        if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender].budsAmount == 0) revert LibGlobalVarState.InsufficientStake();
-        LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
+    function claimRewards(uint256 stakeIndex) public {
+        if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex].budsAmount == 0) revert LibGlobalVarState.InsufficientStake();
+        LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex];
         stk.timeStamp = block.timestamp;
-        uint256 rewards = LibGlobalVarState.calculateStakingReward(stk.budsAmount, stk.timeStamp, stk.buyApr);
+        uint256 rewards = LibGlobalVarState.calculateStakingReward(stk.budsAmount, stk.timeStamp);
         LibGlobalVarState.interfaceStore()._budsVault.sendBudsTo(msg.sender, rewards);
     }
 
-    function unStakeBuds(uint256 _budsAmount) public {
-        if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender].budsAmount < _budsAmount) revert LibGlobalVarState.InsufficientStake();
-        LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
+    function unStakeBuds(uint256 _budsAmount, uint256 stakeIndex) public {
+        if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex].budsAmount < _budsAmount) revert LibGlobalVarState.InsufficientStake();
+        LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex];
         stk.budsAmount -= _budsAmount;
     
         if (stk.budsAmount == 0 && stk.farmerTokenId == 0) {
-            delete LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
+            uint256 len = LibGlobalVarState.mappingStore().stakeRecord[msg.sender].length;
+            LibGlobalVarState.mappingStore().stakeRecord[msg.sender][len-1] = LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex];
+            LibGlobalVarState.mappingStore().stakeRecord[msg.sender].pop();
         }
 
         LibGlobalVarState.intStore().localStakedBudsCount -= _budsAmount;
@@ -98,16 +100,18 @@ contract ChainFacet is Initializable, IERC721Receiver {
         );
     }
 
-    function unStakeFarmer() public {
-        if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender].farmerTokenId == 0) revert LibGlobalVarState.InsufficientStake();
-        LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
+    function unStakeFarmer(uint256 stakeIndex) public {
+        if (LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex].farmerTokenId == 0) revert LibGlobalVarState.InsufficientStake();
+        LibGlobalVarState.Stake storage stk = LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex];
         uint256 tokenIdToSend = stk.farmerTokenId;
         stk.farmerTokenId = 0;
 
         LibGlobalVarState.intStore().totalStakedFarmers -= 1;
 
-        if (stk.farmerTokenId == 0 && stk.budsAmount == 0) {
-            delete LibGlobalVarState.mappingStore().stakeRecord[msg.sender];
+        if (stk.budsAmount == 0 && stk.farmerTokenId == 0) {
+            uint256 len = LibGlobalVarState.mappingStore().stakeRecord[msg.sender].length;
+            LibGlobalVarState.mappingStore().stakeRecord[msg.sender][len-1] = LibGlobalVarState.mappingStore().stakeRecord[msg.sender][stakeIndex];
+            LibGlobalVarState.mappingStore().stakeRecord[msg.sender].pop();
         }
 
         LibGlobalVarState.interfaceStore()._farmerToken.safeTransferFrom(address(this), msg.sender, tokenIdToSend);

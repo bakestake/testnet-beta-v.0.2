@@ -31,6 +31,7 @@ contract CrossChainFacet is Initializable, OApp{
         if (_budsAmount != 0) {
             LibGlobalVarState.interfaceStore()._budsToken.burnFrom(msg.sender, _budsAmount);
             LibGlobalVarState.intStore().globalStakedBudsCount += _budsAmount;
+            LibGlobalVarState.intStore().localStakedBudsCount += _budsAmount;
         }
         if (_farmerTokenId != 0) {
             LibGlobalVarState.interfaceStore()._farmerToken.burnFrom(_farmerTokenId);

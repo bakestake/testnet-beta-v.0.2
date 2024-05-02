@@ -61,7 +61,6 @@ library LibGlobalVarState {
 
     struct Stake {
         address owner;
-        uint256 buyApr;
         uint256 timeStamp;
         uint256 budsAmount;
         uint256 farmerTokenId;
@@ -125,7 +124,8 @@ library LibGlobalVarState {
     }
 
     struct Mappings {
-        mapping(address => Stake) stakeRecord;
+        mapping(address => Stake[]) stakeRecord;
+        mapping(address => bool) stakedFarmer;
         mapping(address => uint256[]) boosts;
         mapping(address => uint256) rewards;
         mapping(uint16 => ChainEntry) wormholePeers;
@@ -203,26 +203,22 @@ library LibGlobalVarState {
 
     function _onStake(uint256 tokenId, address sender, uint256 _budsAmount) internal {
         if (_budsAmount == 0 && tokenId == 0) revert InvalidData();
-        Stake memory stk;
-        if (mappingStore().stakeRecord[sender].owner != address(0)) {
-            stk = mappingStore().stakeRecord[sender];
-            if (stk.farmerTokenId != 0 && tokenId != 0) {
-                revert FarmerStakedAlready();
-            }
-            stk.buyApr = stk.buyApr + getCurrentApr()/2;
-            delete mappingStore().stakeRecord[sender];
-        } else {
-            stk = Stake({ owner: sender, timeStamp: block.timestamp, buyApr: getCurrentApr(), budsAmount: 0, farmerTokenId: 0 });
-            arrayStore().stakerAddresses.push(sender);
-        }
+        if(mappingStore().stakedFarmer[sender]) revert FarmerStakedAlready();
+        Stake memory stk = Stake({
+            owner: sender,
+            timeStamp: block.timestamp,
+            budsAmount:_budsAmount,
+            farmerTokenId : tokenId
+        });
         stk.budsAmount += _budsAmount;
         intStore().localStakedBudsCount += _budsAmount;
         intStore().globalStakedBudsCount += _budsAmount;
         stk.farmerTokenId = tokenId;
-        mappingStore().stakeRecord[sender] = stk;
+        mappingStore().stakeRecord[sender].push(stk);
 
         if (tokenId != 0) {
             intStore().totalStakedFarmers += 1;
+            mappingStore().stakedFarmer[sender] = true;
             interfaceStore()._farmerToken.mintTokenId(address(this), tokenId);
         }
 
@@ -239,22 +235,13 @@ library LibGlobalVarState {
         );
     }
 
-    function getEffectiveAPR(uint256 buyApr) internal view returns(uint256 effectiveApr){
-        if(buyApr > LibGlobalVarState.getCurrentApr()){
-            effectiveApr = (buyApr - LibGlobalVarState.getCurrentApr())/2;
-        }else if(buyApr < LibGlobalVarState.getCurrentApr()){
-            effectiveApr = (LibGlobalVarState.getCurrentApr() - buyApr)/2;
-        }else{
-            effectiveApr = buyApr;
-        }
-    }
 
-    function calculateStakingReward(uint256 budsAmount, uint256 timestamp, uint256 buyApr) internal view returns(uint256 rewards){
+    function calculateStakingReward(uint256 budsAmount, uint256 timestamp) internal view returns(uint256 rewards){
         uint256 timeStaked = block.timestamp - timestamp;
         if(timeStaked < 1 days) revert ("Minimum staking period is 1 day");
         // apr have 2 decimal extra so we divide by 10000
         // this is annual 
-        rewards = budsAmount * getEffectiveAPR(buyApr)/10000;
+        rewards = budsAmount * getCurrentApr()/10000;
 
         //now this is for staked period
         //reward/365 is reward per day
