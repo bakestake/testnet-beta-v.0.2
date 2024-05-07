@@ -23,6 +23,7 @@
   "dependencies": {
     "@alch/alchemy-web3": "^1.4.7",
     "@chainlink/contracts": "^1.0.0",
+    "@nomicfoundation/hardhat-network-helpers": "^1.0.10",
     "@openzeppelin/hardhat-upgrades": "^3.0.5",
     "solmate": "^6.2.0",
     "tsc": "^2.0.4",

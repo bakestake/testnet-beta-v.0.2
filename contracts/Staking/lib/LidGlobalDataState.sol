@@ -7,7 +7,7 @@ import {IBudsToken} from "../../interfaces/IBudsToken.sol";
 import {IChars} from "../../interfaces/IChars.sol";
 import {IBoosters} from "../../interfaces/IBooster.sol";
 import {IRaidHandler} from "../../interfaces/IRaidHandler.sol";
-import { ISupraRouter } from "../../interfaces/ISupraRouter.sol";
+import {ISupraRouter} from "../../interfaces/ISupraRouter.sol";
 import {IBudsVault} from "../../interfaces/IBudsVault.sol";
 
 library LibGlobalVarState {
@@ -238,7 +238,6 @@ library LibGlobalVarState {
 
     function calculateStakingReward(uint256 budsAmount, uint256 timestamp) internal view returns(uint256 rewards){
         uint256 timeStaked = block.timestamp - timestamp;
-        if(timeStaked < 1 days) revert ("Minimum staking period is 1 day");
         // apr have 2 decimal extra so we divide by 10000
         // this is annual 
         rewards = budsAmount * getCurrentApr()/10000;
@@ -247,8 +246,6 @@ library LibGlobalVarState {
         //reward/365 is reward per day
         //timestaked/1 days is number of days staked
         rewards = (rewards/365) * (timeStaked/1 days);
-
-
     }
 
 }

@@ -31,22 +31,22 @@ contract SNBXP is Initializable, UUPSUpgradeable, OwnableUpgradeable {
 
     string private _name;
     string private _symbol;
-    address public _farmer;
 
     IBudsVault public _budsvault;
     IStaking public _stakingContract;
-    IERC20 public _buds;
 
-    function initialize(address stakingContractAddress, address budsVault, address farmerAddress) public initializer {
-        if (stakingContractAddress == address(0) || budsVault == address(0) || farmerAddress == address(0)) {
+    function initialize(address budsVault) public initializer {
+        if (budsVault == address(0)) {
             revert ZeroAddress();
         }
         _name = "SNB XP Token";
         _symbol = "SNBXP";
-        _stakingContract = IStaking(stakingContractAddress);
         _budsvault = IBudsVault(budsVault);
-        _buds = IERC20(_buds);
-        _farmer = farmerAddress;
+    }
+
+    function setStaking(address _address) external {
+        if(_address == address(0)) revert ZeroAddress();
+        _stakingContract  = IStaking(_address);
     }
 
     function name() public view virtual returns (string memory) {
